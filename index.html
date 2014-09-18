@@ -1,0 +1,243 @@
+
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Bouge les pi&egrave;ces</title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="iso-8859-1">
+    <link href="/maps/documentation/javascript/examples/default.css" rel="stylesheet">
+    <style></style>
+  </head>
+  <body>
+  <div id="jeuBouger">
+  </div>
+  </table>
+  </body>
+</html>
+
+<script>
+		//################## Modifiable ##################//
+	var taille = 4, //nombre de carr&eacute; par cot&eacute;
+		pixels = 125, // taille du cot&eacute; d'un carr&eacute;
+		colorEmpty = "brown",
+		colorDraggable = "blue",
+		colorNonDraggable = "grey",
+		urlImg = "img.png", // R&eacute;cuperation de l'image (Image carr&eacute; de dimension x*x avec x=taille*pixels
+		//###############################################//
+		div = document.getElementById("jeuBouger"), // R&eacute;cuperation du div du jeu
+		lastId = (taille*taille)-1, //On r&eacute;cupere l'id du dernier fragment de l'image
+		msgErreur = document.createElement("div"),
+		listeDraggable = new Array(),
+		tdVide = taille*taille-1,//Id du td vide au d&eacute;part
+		nbCoups = 0; //Compteur de coups
+	
+	// Au chargement de la page on remet &agrave; z&eacute;ro
+	window.onload=function(){
+		remiseAZero();
+	}
+	
+	// Supprime l'ancien environnement de jeu si besoin et en recr&eacute;e un
+	function remiseAZero()
+	{
+		div.innerHTML = "";
+		nbCoups = 0;
+		table = document.createElement("table");
+		//Cr&eacute;ation des tr et td avec leurs images
+		for(i=0;i<taille;i++){
+			var tr = document.createElement("tr");
+			for(j=0;j<taille;j++){
+				//Les TD
+				var td = document.createElement("td"),
+					id = (i*taille)+j;
+				td.setAttribute('id','td'+id);
+				td.setAttribute('ondrop','drop(event)');
+				td.setAttribute('ondragover','allowDrop(event)');
+				td.style.width = pixels+'px';
+				td.style.height = pixels+'px';
+				td.style.borderStyle = "solid";
+				td.style.borderColor = "grey";
+				td.style.borderWidth = "2px";
+				// les images
+				var img = document.createElement("div");
+				img.style.width = pixels+'px';
+				img.style.height = pixels+'px';
+				img.setAttribute('id','im'+id);
+				img.className = "vide";
+				img.style.backgroundColor = colorEmpty;
+				if(id != lastId){// Si ce n'est pas l'image vide
+					img.setAttribute('draggable','true');
+					img.setAttribute('ondragstart','drag(event)');
+					img.style.backgroundColor = "white";
+					img.style.backgroundImage = "url("+urlImg+")";
+					img.style.backgroundRepeat = "no-repeat";
+					img.style.backgroundPosition = -j*pixels+'px'+ ' ' + -i*pixels+'px';
+					img.className = "plein";
+				}
+				// Ajout au document
+				td.appendChild(img);
+				tr.appendChild(td);
+			}
+			table.appendChild(tr);
+		}
+		
+		table.style.borderWidth = "0";
+		divJeu = document.createElement("div");
+		divJeu.appendChild(table);
+		divJeu.style.styleFloat = 'left';
+		divJeu.style.cssFloat = 'left';
+		div.appendChild(divJeu);
+		
+		divModel = document.createElement("div");
+		model = document.createElement("img");
+		model.src = urlImg;
+		model.style.maxHeight = "200px";
+		model.style.maxWidth = "auto";
+		divModel.appendChild(model);
+		divModel.style.marginLeft=((taille*pixels)+(taille*8)+25)+"px";
+		div.appendChild(divModel);
+		
+		msgErreur.setAttribute('id',"msgErreur");
+		msgErreur.style.color = "red";
+		div.appendChild(msgErreur);
+		
+		randomizer();
+		actualisation();
+	}
+	
+	function actualisation()
+	{
+		msgErreur.innerHTML = "";
+		var win = isWin();
+		listeDraggable = new Array();
+		tdVide = parseInt(document.getElementsByClassName('vide')[0].parentNode.id.substring(2));
+		listeDraggable = listeTdDraggable(tdVide);
+		
+		for(i=0;i<taille*taille;i++){
+			var clr = colorNonDraggable;
+			if(contains(listeDraggable,i) && !win){
+				clr = colorDraggable;
+			}
+			document.getElementById('td'+i).style.borderColor = clr;
+		}
+		
+		if(win)
+		{
+			tdVide = document.getElementById('td'+tdVide);
+			imVide = tdVide.firstElementChild;
+			imVide.style.backgroundColor = "white";
+			imVide.style.backgroundImage = "url("+urlImg+")";
+			imVide.style.backgroundRepeat = "no-repeat";
+			imVide.style.backgroundPosition = -(taille-1)*pixels+'px'+ ' ' + -(taille-1)*pixels+'px';
+			
+			msgErreur.innerHTML = "C'est gagn&eacute;! <br> Partie gagn&eacute; en "+nbCoups+" coups! <br> <input type=\"button\" onclick=\"remiseAZero();\" value=\"Voules vous rejouez?\"/>";
+		}
+	}
+	
+	function listeTdDraggable(tdVide)
+	{
+		var liste = new Array();
+		if(parseInt(tdVide/taille) > 0)
+			liste.push(tdVide-taille);
+		if(parseInt(tdVide%taille) > 0)
+			liste.push(tdVide-1);
+		if(parseInt(tdVide/taille) < taille-1)
+			liste.push(tdVide+taille);
+		if(parseInt(tdVide%taille) < taille-1)
+			liste.push(tdVide+1);
+		return liste;
+	}
+	
+	function allowDrop(ev)
+	{
+		if(!isWin())
+		{
+			msgErreur.innerHTML = "";
+			var autorisation = ev.dataTransfer.getData('autorisationDrag'),
+				tdId = parseInt(ev.dataTransfer.getData('oldId')),
+				nid = parseInt(ev.target.parentNode.id.substring(2));
+			if( autorisation == 'true' && tdId != nid && nid == tdVide)
+			{
+				ev.preventDefault();
+			}
+			else
+			{
+				msgErreur.innerHTML = "Vous ne pouvez pas faire &ccedil;a";
+			}
+		}
+	}
+
+	function drag(ev)
+	{
+		actualisation();
+		var tdid = parseInt(ev.target.parentNode.id.substring(2)),
+			imid = parseInt(ev.target.id.substring(2));
+		if(contains(listeDraggable,tdid))
+		{
+			ev.dataTransfer.setData('tdId',tdid);
+			ev.dataTransfer.setData('imId',imid);
+			ev.dataTransfer.setData('autorisationDrag','true');
+		}
+		else{
+			ev.dataTransfer.setData('autorisationDrag','false');
+		}
+	}
+
+	function drop(ev)
+	{
+		var tdid = document.getElementById('td'+parseInt(ev.target.parentNode.id.substring(2))),
+			imid = document.getElementById('im'+parseInt(ev.target.id.substring(2))),
+			tdId = document.getElementById('td'+parseInt(ev.dataTransfer.getData('tdId'))),
+			imId = document.getElementById('im'+parseInt(ev.dataTransfer.getData('imId')));
+		
+		tdid.appendChild(imId);
+		tdId.appendChild(imid);
+		nbCoups++;
+		ev.preventDefault();
+		
+		actualisation();
+		msgErreur.innerHTML += "<br>"+nbCoups+" coups.";
+	}
+	
+	function isWin()
+	{
+		var win = true;
+		for(i=0;i<taille*taille;i++){
+			var im = document.getElementById('im'+i);
+			if(parseInt(im.parentNode.id.substring(2)) != i)
+				win = false;
+		}
+		return win;
+	}
+	
+	function randomizer()
+	{
+		var tour = 0;
+		while(tour<(taille*100))
+		{
+			nb = 0;
+			liste = new Array();
+			var tdVide = document.getElementsByClassName('vide')[0].parentNode,
+				imVide = document.getElementsByClassName('vide')[0],
+				idTdVide = parseInt(tdVide.id.substring(2));
+			liste = listeTdDraggable(idTdVide);
+			tdMove = document.getElementById('td'+liste[Math.floor((Math.random()*(liste.length))+0)]);
+			imMove = tdMove.firstElementChild;
+			tdVide.appendChild(imMove);
+			tdMove.appendChild(imVide);
+			tour++;
+		}
+		if(tour == 30000)
+			console.log('-_-');
+	}
+	
+	function contains(a, obj) {
+    var i = a.length;
+    while (i--) {
+       if (a[i] === obj) {
+           return true;
+       }
+    }
+    return false;
+}
+</script>
